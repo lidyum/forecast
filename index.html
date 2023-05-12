@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Forecast</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"
+      integrity="sha512-fD9DI5bZwQxOi7MhYWnnNPlvXdp/2Pj3XSTRrFs5FQa4mizyGLnJcN6tuvUS6LbmgN1ut+XGSABKvjN0H6Aoow=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+        box-sizing: border-box;
+        font-family: Helvetica, sans-serif;
+      }
+
+      body {
+        font-size: 16px;
+      }
+
+      .container {
+        width: 500px;
+        margin-left: auto;
+        margin-right: auto;
+        margin-top: 25vh;
+      }
+
+      .form {
+        display: flex;
+        justify-content: center;
+      }
+
+      .form input {
+        font-size: 2em;
+        padding: 0.5em;
+      }
+
+      .form input[type="text"] {
+        border-bottom-left-radius: 0.5em;
+        border-top-left-radius: 0.5em;
+        border-right: none;
+      }
+
+      .form input[type="submit"] {
+        border-top-right-radius: 0.5em;
+        border-bottom-right-radius: 0.5em;
+      }
+
+      .hide {
+        display: none;
+      }
+
+      .show {
+        display: block;
+      }
+
+      .condition {
+        display: flex;
+        width: inherit;
+        padding: 1em;
+        background-color: #07afff;
+        border-radius: 0.5em;
+        color: white;
+        font-weight: light;
+        margin-top: 1em;
+      }
+
+      .condition .info {
+        width: 35%;
+        border-right: 1px solid white;
+      }
+
+      .condition .location {
+        width: 45%;
+        display: grid;
+        align-content: center;
+        padding-left: 1em;
+        font-size: 0.85em;
+      }
+
+      .condition .icon {
+        width: 20%;
+        display: flex;
+        justify-content: right;
+      }
+
+      .condition .degree {
+        font-size: 4em;
+        font-weight: lighter;
+      }
+
+      .error {
+        color: #daa65a;
+        background-color: #ffe7e6;
+        padding: 1em;
+        font-size: 1em;
+        margin-top: 1em;
+      }
+
+      .rotate {
+        animation: rotate 1.5s linear infinite;
+      }
+      @keyframes rotate {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .spinner {
+        display: inline-block;
+      }
+
+      #spinner_container {
+        text-align: center;
+        padding: 1em;
+        font-size: 3em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- form -->
+      <div class="form">
+        <input
+          id="city_name"
+          type="text"
+          placeholder="Şehir adı giriniz..."
+          onkeypress="on_key_press(event)"
+        />
+        <input
+          type="submit"
+          value="Sorgula"
+          onclick="on_click()"
+          onkeypress="on_key_press(event)"
+        />
+      </div>
+
+      <!-- spinner -->
+      <div class="hide" id="spinner_container">
+        <div class="spinner rotate">
+          <i class="fa fa-spinner"></i>
+        </div>
+      </div>
+
+      <!-- error message -->
+      <div id="error_container" class="hide">
+        <div class="error">
+          <p>
+            <i class="fa fa-exclamation-triangle" style="padding-right: 1em"></i
+            ><span id="error_message"></span>
+          </p>
+        </div>
+      </div>
+
+      <!-- condition result -->
+      <div id="condition_container" class="hide">
+        <div class="condition">
+          <div class="info">
+            <div><p id="condition">Parçalı bulutlu</p></div>
+            <div>
+              <p class="degree" id="degree">25&deg;</p>
+            </div>
+          </div>
+          <div class="location">
+            <div>
+              <p id="date" style="padding-bottom: 0.5em">
+                10/10/2022 Pazartesi
+              </p>
+            </div>
+            <div>
+              <p>
+                <i class="fa fa-location-dot" style="padding-right: 0.5em"></i
+                ><span id="location">İstanbul</span>
+              </p>
+            </div>
+          </div>
+          <div class="icon">
+            <img
+              id="icon"
+              src="http://cdn.weatherapi.com/weather/64x64/day/116.png"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+
+  <script>
+    function on_click() {
+      //butona tıklandıysa doğrula ve sorgu yap
+      const is_valid = validate();
+      if (is_valid) {
+        get_weather_status();
+      }
+    }
+
+    function on_key_press(event) {
+      const key = event.keyCode || event.which;
+      if (key == 13) {
+        //enter tuşuna basıldıysa doğrula ve sorgu yap
+        const is_valid = validate();
+        if (is_valid) {
+          get_weather_status();
+        }
+      } else {
+        //daha önceden, hata mesajı gözükmüşse
+        //kullanıcı inputa birşeyler yazmaya başlayınca
+        //hata mesajını sil
+        hide_error_message();
+      }
+    }
+
+    function validate() {
+      const input_element = document.getElementById("city_name");
+      const city_name = input_element.value;
+      if (!city_name) {
+        render_error("Lütfen bir şehir adı giriniz");
+        show_error_message();
+        hide_condition();
+        return false;
+      }
+
+      return true;
+    }
+
+    function get_weather_status() {
+      const input_element = document.getElementById("city_name");
+      const city_name = input_element.value;
+
+      const params = {
+        key: "c820bae4f65047388c1164528231005",
+        q: city_name,
+        aqi: "no",
+      };
+
+      let query = Object.keys(params)
+        .map((k) => encodeURIComponent(k) + "=" + encodeURIComponent(params[k]))
+        .join("&");
+
+      let url = "http://api.weatherapi.com/v1/current.json?" + query;
+
+      let request = fetch(url);
+
+      show_spinner();
+      disabled_form();
+      request
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.error) {
+            const error = data.error.message;
+            render_error(error);
+            show_error_message();
+            hide_condition();
+          } else {
+            const temp = data.current.temp_c;
+            const condition = data.current.condition.text;
+            const icon = data.current.condition.icon;
+            const location = data.location.name;
+            const date = data.current.last_updated_epoch;
+
+            render_condition(condition, icon, temp, date, location);
+            show_condition();
+            hide_error_message();
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+        })
+        .finally(() => {
+          hide_spinner();
+          enabled_form();
+          focus();
+        });
+    }
+
+    function show_error_message() {
+      const element = document.getElementById("error_container");
+      element.className = "show";
+    }
+
+    function hide_error_message() {
+      const element = document.getElementById("error_container");
+      element.className = "hide";
+    }
+
+    function show_condition() {
+      const element = document.getElementById("condition_container");
+      element.className = "show";
+    }
+
+    function hide_condition() {
+      const element = document.getElementById("condition_container");
+      element.className = "hide";
+    }
+
+    function show_spinner() {
+      const element = document.getElementById("spinner_container");
+      element.className = "show";
+    }
+
+    function hide_spinner() {
+      const element = document.getElementById("spinner_container");
+      element.className = "hide";
+    }
+
+    function disabled_form() {
+      const elements = document.getElementsByTagName("input");
+      for (let i = 0; i < elements.length; i++) {
+        elements[i].disabled = "disabled";
+      }
+    }
+
+    function enabled_form() {
+      const elements = document.getElementsByTagName("input");
+      for (let i = 0; i < elements.length; i++) {
+        elements[i].disabled = "";
+      }
+    }
+
+    function focus() {
+      const input_element = document.getElementById("city_name");
+      input_element.focus();
+    }
+
+    function render_error(error) {
+      const error_element = document.getElementById("error_message");
+      error_element.innerText = error;
+    }
+
+    function render_condition(condition, icon, temp, date, location) {
+      const condition_element = document.getElementById("condition");
+      condition_element.innerText = condition;
+
+      const degree_element = document.getElementById("degree");
+      degree_element.innerText = temp + "°";
+
+      const location_element = document.getElementById("location");
+      location_element.innerText = location;
+
+      const condition_date = new Date(date * 1000);
+      const date_formatted = condition_date.toLocaleDateString();
+
+      const days = [
+        "Pazar",
+        "Pazartesi",
+        "Salı",
+        "Çarşamba",
+        "Perşembe",
+        "Cuma",
+        "Cumartesi",
+      ];
+      const day_name = days[condition_date.getDay()];
+
+      const date_element = document.getElementById("date");
+      date_element.innerText = date_formatted + " " + day_name;
+
+      const icon_element = document.getElementById("icon");
+      icon_element.src = "http:" + icon;
+    }
+  </script>
+</html>
